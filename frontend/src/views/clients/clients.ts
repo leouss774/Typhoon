@@ -4,6 +4,7 @@
  */
 
 import { fetchClientsFromApi, getCachedClients, getCachedClient } from '../../api/data-service.js';
+import { showPrompt, showSuccess, showError, showInfo } from '../../utils/notifications.js';
 
 let initialized = false;
 
@@ -323,6 +324,9 @@ async function openClientDetail(clientId: string): Promise<void> {
     historyBody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:16px;font-size:11px;color:var(--text-muted);">Historique des paiements — module à connecter</td></tr>';
   }
 
+  // Load risk scores from assessments
+  loadClientAssessments(clientId);
+
   // Reset tabs
   document.querySelectorAll('.cdp-tab-content').forEach(el => el.classList.remove('active'));
   document.querySelector('.cdp-tab-content[data-cdp-content="overview"]')?.classList.add('active');
@@ -398,6 +402,74 @@ function populateOverview(data: OverviewData): void {
   }
 }
 
+/* ── Populate risk scores from assessments ─────────────────── */
+
+async function loadClientAssessments(clientId: string): Promise<void> {
+  try {
+    // Fetch assessments for this client's properties
+    const clientRes = await fetch(`/api/clients/${encodeURIComponent(clientId)}`);
+    if (!clientRes.ok) return;
+    const clientData = await clientRes.json();
+    const props = clientData?.properties || [];
+    if (props.length === 0) return;
+
+    // Fetch all assessments from API
+    const assRes = await fetch('/api/assessments');
+    if (!assRes.ok) return;
+    const assessments = await assRes.json();
+
+    // Filter assessments for this client's properties
+    const propIds = new Set(props.map((p: any) => p.id));
+    const clientAssessments = assessments.filter((a: any) => propIds.has(a.propertyId));
+
+    if (clientAssessments.length === 0) return;
+
+    // Take the most recent assessment
+    const latest = clientAssessments.sort((a: any, b: any) =>
+      new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+    )[0];
+
+    // Try both panel IDs (assureur and admin)
+    let scoresEl = document.getElementById('cdpOvScores');
+    if (!scoresEl) scoresEl = document.getElementById('cdpOvScoresAdmin');
+    if (!scoresEl) return;
+
+    const scores = [
+      { key: 'inondation', label: 'Inondation', val: latest.inondationScore, color: '#3b82f6' },
+      { key: 'rga', label: 'RGA', val: latest.rgaScore, color: '#f59e0b' },
+      { key: 'tempete', label: 'Tempête', val: latest.tempeteScore, color: '#8b5cf6' },
+      { key: 'incendie', label: 'Incendie', val: latest.incendieScore, color: '#ef4444' },
+      { key: 'seisme', label: 'Séisme', val: latest.seismeScore, color: '#6366f1' },
+    ];
+
+    const globalScore = latest.globalScore || 0;
+    const globalColor = globalScore >= 70 ? '#ef4444' : globalScore >= 50 ? '#f59e0b' : globalScore >= 30 ? '#3b82f6' : '#10b981';
+
+    scoresEl.innerHTML = `
+      <div class="cdp-overview-score-global" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border-color);margin-bottom:8px;">
+        <div style="width:40px;height:40px;border-radius:50%;background:${globalColor}20;display:flex;align-items:center;justify-content:center;">
+          <span style="font-size:16px;font-weight:700;color:${globalColor};">${globalScore}</span>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:600;color:var(--text-primary);">Score global</div>
+          <div style="font-size:10px;color:var(--text-muted);">${latest.createdAt ? new Date(latest.createdAt).toLocaleDateString('fr-FR') : 'Date inconnue'}</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;">
+        ${scores.map(s => {
+          const v = s.val || 0;
+          const c = v >= 70 ? '#ef4444' : v >= 50 ? '#f59e0b' : v >= 30 ? '#3b82f6' : '#10b981';
+          return `<div style="display:flex;justify-content:space-between;padding:4px 6px;background:var(--bg-panel);border-radius:4px;font-size:10px;">
+            <span style="color:var(--text-secondary);">${s.label}</span>
+            <span style="color:${c};font-weight:600;">${v}</span>
+          </div>`;
+        }).join('')}
+      </div>`;
+  } catch {
+    // Silent — scores card stays as "Aucune évaluation"
+  }
+}
+
 /* ── Event delegation for table rows (avoids re-wiring on reload) ── */
 
 let tableDelegationWired = false;
@@ -437,7 +509,7 @@ function wireTableDelegation(tbody: HTMLElement): void {
         }, 400);
       } else if (action === 'more') {
         const name = row.querySelector('.clients-table-name')?.textContent || 'Client';
-        alert(`Options pour ${name} — module à implémenter.`);
+        showInfo(`Options pour ${name} — module à implémenter.`);
       }
     } else {
       // Row click → open detail
@@ -637,34 +709,82 @@ function setupStaticActions(): void {
   if (evalBtn) {
     evalBtn.addEventListener('click', () => {
       if (!currentClientId) return;
-
-      // Find the first property for this client
-      const clientRow = document.querySelector(`.clients-table-row[data-client="${currentClientId}"]`);
-      // We need to fetch the client again to get property IDs
       fetch(`/api/clients/${encodeURIComponent(currentClientId)}`)
         .then(r => r.ok ? r.json() : null)
         .then(clientData => {
           const props = clientData?.properties || [];
           if (props.length > 0) {
             sessionStorage.setItem('assureur_property_id', props[0].id);
-            // Also store the client ID so the Risk Hub can create an assessment
             sessionStorage.setItem('assureur_client_id', currentClientId);
           } else {
-            // No properties yet — still navigate, form will be empty
             sessionStorage.removeItem('assureur_property_id');
             sessionStorage.setItem('assureur_client_id', currentClientId);
           }
-
           import('../../router.js').then(({ navigateTo }) => {
             navigateTo('property-risk');
           });
         })
         .catch(() => {
-          // API unavailable — still navigate
           import('../../router.js').then(({ navigateTo }) => {
             navigateTo('property-risk');
           });
         });
+    });
+  }
+
+  // Assign expert button
+  const assignBtn = document.getElementById('cdpAssignExpertBtn');
+  if (assignBtn) {
+    assignBtn.addEventListener('click', async () => {
+      if (!currentClientId) return;
+
+      const clientName = document.getElementById('cdpName')?.textContent || 'Client';
+      const expertEmail = await showPrompt({
+        title: 'Assigner un expert',
+        content: `Assigner un expert pour évaluer le bien de ${clientName}`,
+        inputLabel: 'Email de l\'expert',
+        inputPlaceholder: 'expert@previa.fr',
+        inputValue: 'expert@previa.fr',
+      });
+
+      if (!expertEmail) return;
+
+      try {
+        const res = await fetch(`/api/clients/${encodeURIComponent(currentClientId)}`);
+        if (!res.ok) {
+          showError('Impossible de récupérer les données du client');
+          return;
+        }
+        const clientData = await res.json();
+        const props = clientData?.properties || [];
+        const propertyId = props.length > 0 ? props[0].id : '';
+        const address = props.length > 0 ? (props[0].address || '') : '';
+        const city = props.length > 0 ? (props[0].city || '') : '';
+
+        const assignRes = await fetch('/api/expert/assign', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            clientId: currentClientId,
+            clientName,
+            propertyId,
+            address,
+            city,
+            assignedTo: expertEmail,
+            assignedByName: 'Assureur',
+            notes: '',
+          }),
+        });
+
+        if (assignRes.ok) {
+          showSuccess(`Expert ${expertEmail} assigné avec succès ! La mission est disponible dans l'espace Expert.`);
+        } else {
+          const err = await assignRes.json().catch(() => ({}));
+          showError(err.error || 'Impossible d\'assigner l\'expert');
+        }
+      } catch {
+        showError('Erreur réseau lors de l\'assignation');
+      }
     });
   }
 
@@ -708,7 +828,7 @@ function setupStaticActions(): void {
 
   document.querySelectorAll('.clients-contract-view').forEach(btn => {
     btn.addEventListener('click', () => {
-      alert('Ouverture du contrat... (module à implémenter)');
+      showInfo('Ouverture du contrat... (module à implémenter)');
     });
   });
 }

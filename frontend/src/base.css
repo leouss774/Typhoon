@@ -151,9 +151,35 @@ body {
   opacity: 1; width: auto; min-width: auto; overflow: visible; flex-shrink: 1;
 }
 
+.nav-item { position: relative; }
 .nav-item.active { background-color: #fdf2ed; color: var(--color-primary); }
 .nav-item.active .nav-label { font-weight: 600; }
 .nav-item:hover { background-color: #f1f5f9; color: var(--text-primary); }
+
+/* Sidebar badge for pending submissions */
+.sidebar-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  font-family: var(--font-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  line-height: 1;
+  box-shadow: 0 2px 4px rgba(239,68,68,0.3);
+  pointer-events: none;
+  z-index: 2;
+}
+.sidebar:not(.expanded) .sidebar-badge,
+.sidebar:not(.expanded):hover .sidebar-badge { right: 2px; top: 2px; min-width: 12px; height: 12px; font-size: 7px; }
 
 .sidebar-bottom {
   display: flex; flex-direction: column; gap: 8px;

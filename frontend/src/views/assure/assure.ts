@@ -946,11 +946,45 @@ function setupPropertyForm(): void {
       }
     }
 
+    // Upload files if any
+    let uploadedFiles: Array<{ originalName: string; path: string }> = [];
+    try {
+      const fileInput = document.getElementById('assureFileInput') as HTMLInputElement | null;
+      const uploadedFilesData = (window as any).__uploadedFiles || (typeof uploadedFiles !== 'undefined' ? uploadedFiles : []);
+      if (fileInput?.files?.length || uploadedFilesData.length > 0) {
+        const formDataFiles = new FormData();
+        // Add from file input
+        if (fileInput?.files) {
+          for (const f of fileInput.files) {
+            formDataFiles.append('files', f);
+          }
+        }
+        // Add from drag-drop preview
+        for (const f of uploadedFilesData) {
+          if (f instanceof File || f.file instanceof File) {
+            formDataFiles.append('files', f.file || f);
+          }
+        }
+        formDataFiles.append('propertyId', 'pending');
+
+        const uploadRes = await fetch('/api/upload', {
+          method: 'POST',
+          body: formDataFiles,
+        });
+        if (uploadRes.ok) {
+          const uploadData = await uploadRes.json();
+          uploadedFiles = uploadData.files || [];
+        }
+      }
+    } catch {
+      // Silent — files are optional, continue without them
+    }
+
     try {
       const res = await fetch('/api/properties/input', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...formData, clientId }),
+        body: JSON.stringify({ ...formData, clientId, uploadedFiles }),
       });
 
       if (!res.ok) {

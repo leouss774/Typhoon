@@ -54,4 +54,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   initClients();
   initOverview();
   initAuth();
+
+  // Refresh sidebar badge (pending submissions count)
+  import('./api/data-service.js').then(({ refreshSidebarBadge }) => {
+    refreshSidebarBadge();
+  });
 });

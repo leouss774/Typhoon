@@ -11,6 +11,8 @@ import { assessmentRoutes } from './routes/assessments.routes.js';
 import { propertyRoutes } from './routes/properties.routes.js';
 import { expertFormRoutes } from './routes/expert-form.routes.js';
 import { evaluateRoutes } from './routes/evaluate.routes.js';
+import { uploadRoutes } from './routes/upload.routes.js';
+import { expertRoutes } from './routes/expert.routes.js';
 
 const app = new Hono();
 
@@ -26,6 +28,8 @@ app.route('/api/assessments', assessmentRoutes);
 app.route('/api/assessments', expertFormRoutes);
 app.route('/api/assessments', evaluateRoutes);
 app.route('/api/properties', propertyRoutes);
+app.route('/api/upload', uploadRoutes);
+app.route('/api/expert', expertRoutes);
 
 console.log(`🚀 API Server starting on http://localhost:${env.PORT}`);
 

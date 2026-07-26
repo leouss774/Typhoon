@@ -11,6 +11,7 @@ import { initOverview, destroyOverview } from './views/overview/overview.js';
 import { refreshSidebarBadge } from './api/data-service.js';
 
 import { hideLandingPage } from './views/landing/landing.js';
+import { showInfo } from './utils/notifications.js';
 
 // Admin & Expert lifecycle imports (simple inline modules — no heavy dependencies)
 import { initAdminUsers, destroyAdminUsers } from './views/admin/admin.js';
@@ -657,7 +658,7 @@ export function setupHeaderActions(): void {
             break;
           default: {
             const labels: Record<string, string> = { billing: 'Plan & Facturation', pricing: 'Tarifs', faq: 'FAQ' };
-            alert(`Page « ${labels[action] || action} » — À implémenter.`);
+            showInfo(`Page « ${labels[action] || action} » — À implémenter.`);
           }
         }
       });

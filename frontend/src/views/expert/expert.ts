@@ -1,7 +1,7 @@
 /**
  * Expert view module — lightweight lifecycle for expert missions dashboard.
+ * Fetches real assignments from API and displays them as mission cards.
  */
-import { fetchClientsFromApi } from '../../api/data-service.js';
 
 let initialized = false;
 
@@ -16,74 +16,123 @@ export function destroyExpertMissions(): void {
 }
 
 async function loadExpertMissions(): Promise<void> {
+  const grid = document.getElementById('expertMissionsGrid');
+  if (!grid) return;
+
   try {
-    const clients = await fetchClientsFromApi().catch(() => []);
-    const grid = document.getElementById('expertMissionsGrid');
-    if (!grid) return;
+    // Fetch all missions from API
+    const res = await fetch('/api/expert/missions');
+    let missions: Array<{
+      id: string;
+      clientId: string;
+      clientName: string;
+      address: string;
+      city: string;
+      assignedTo: string;
+      status: 'pending' | 'in_progress' | 'completed';
+      createdAt: string;
+    }> = [];
 
-    // Create sample mission cards from client data
-    if (clients.length > 0) {
-      const riskLevels = ['Haut', 'Modéré', 'Faible'];
-      const riskColors = ['#ef4444', '#f59e0b', '#10b981'];
-      const statuses = [
-        { label: 'En attente', color: 'rgba(245,158,11,0.15)', textColor: '#f59e0b' },
-        { label: 'En cours', color: 'rgba(99,102,241,0.15)', textColor: '#6366f1' },
-        { label: 'Terminée', color: 'rgba(16,185,129,0.15)', textColor: '#10b981' },
-      ];
+    if (res.ok) {
+      missions = await res.json();
+    }
 
-      grid.innerHTML = clients.slice(0, 6).map((c, i) => {
-        const riskIdx = i % 3;
-        const statusIdx = i % 3;
-        const addresses = ['8 Rue de la Paix', '15 Bd Haussmann', '34 Rue de Rivoli', '5 Rue de Rennes', '12 Rue Matabiau', '7 Rue du Bac'];
-        const address = c.insuredAddress || addresses[i] || 'Adresse inconnue';
-        const city = c.insuredCity || '';
+    if (missions.length === 0) {
+      // Fallback: show empty state with a helpful message
+      grid.innerHTML = `
+        <div class="dashboard-card" style="padding:32px;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;grid-column:1/-1;">
+          <span class="material-symbols-outlined" style="font-size:48px;color:var(--text-muted);opacity:0.3;">assignment_turned_in</span>
+          <p style="font-size:13px;color:var(--text-secondary);">Aucune mission pour le moment</p>
+          <p style="font-size:11px;color:var(--text-muted);">Les missions apparaîtront ici après qu'un assureur vous les ait assignées.</p>
+        </div>`;
+      return;
+    }
 
-        return `
-          <div class="dashboard-card" style="padding:16px;display:flex;flex-direction:column;gap:10px;">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-              <div>
-                <div style="font-size:14px;font-weight:600;">${escapeHtml(c.firstName)} ${escapeHtml(c.lastName)}</div>
-                <div style="font-size:12px;color:var(--text-muted);">${escapeHtml(address)}${city ? ' · ' + escapeHtml(city) : ''}</div>
-              </div>
-              <span style="font-size:11px;padding:3px 10px;border-radius:12px;background:${riskColors[riskIdx]}15;color:${riskColors[riskIdx]};font-weight:500;">${riskLevels[riskIdx]} risque</span>
+    const statuses: Record<string, { label: string; color: string; textColor: string }> = {
+      pending: { label: 'En attente', color: 'rgba(245,158,11,0.15)', textColor: '#f59e0b' },
+      in_progress: { label: 'En cours', color: 'rgba(99,102,241,0.15)', textColor: '#6366f1' },
+      completed: { label: 'Terminée', color: 'rgba(16,185,129,0.15)', textColor: '#10b981' },
+    };
+
+    grid.innerHTML = missions.map(m => {
+      const s = statuses[m.status] || statuses.pending;
+      const addr = [m.address, m.city].filter(Boolean).join(', ') || 'Adresse non renseignée';
+      return `
+        <div class="dashboard-card" style="padding:16px;display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+            <div>
+              <div style="font-size:14px;font-weight:600;">${escapeHtml(m.clientName)}</div>
+              <div style="font-size:12px;color:var(--text-muted);">${escapeHtml(addr)}</div>
             </div>
-            <div style="display:flex;gap:8px;font-size:11px;color:var(--text-secondary);">
-              <span class="material-symbols-outlined" style="font-size:14px;">calendar_today</span>
-              <span>Soumis le ${new Date(Date.now() - i * 86400000).toLocaleDateString('fr-FR')}</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;padding-top:8px;border-top:1px solid var(--border-color);">
-              <span style="font-size:11px;padding:3px 10px;border-radius:12px;background:${statuses[statusIdx].color};color:${statuses[statusIdx].textColor};font-weight:500;">${statuses[statusIdx].label}</span>
-              <button class="risk-btn primary" style="height:28px;font-size:11px;padding:0 12px;" onclick="alert('Démarrer mission — à implémenter')">Démarrer</button>
-            </div>
+            <span style="font-size:10px;color:var(--text-muted);">${escapeHtml(m.assignedTo)}</span>
           </div>
-        `;
-      }).join('');
-    }
+          <div style="display:flex;gap:8px;font-size:11px;color:var(--text-secondary);">
+            <span class="material-symbols-outlined" style="font-size:14px;">calendar_today</span>
+            <span>Assignée le ${new Date(m.createdAt).toLocaleDateString('fr-FR')}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding-top:8px;border-top:1px solid var(--border-color);">
+            <span style="font-size:11px;padding:3px 10px;border-radius:12px;background:${s.color};color:${s.textColor};font-weight:500;">${s.label}</span>
+            <button class="risk-btn primary" style="height:28px;font-size:11px;padding:0 12px;" data-mission-id="${m.id}" data-action="start">
+              ${m.status === 'pending' ? 'Démarrer' : m.status === 'in_progress' ? 'Continuer' : 'Voir'}
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
 
-    // Setup filter
-    const filter = document.getElementById('expertMissionFilter');
-    if (filter) {
-      filter.addEventListener('change', () => {
-        const val = (filter as HTMLSelectElement).value;
-        const cards = grid.querySelectorAll('.dashboard-card');
-        // Reset all cards to visible first
-        cards.forEach(card => { (card as HTMLElement).style.display = ''; });
-        if (val !== 'all') {
-          const map: Record<string, string> = { pending: 'En attente', in_progress: 'En cours', completed: 'Terminée' };
-          cards.forEach(card => {
-            const statusEl = card.querySelector(':scope > div:last-child > span:first-child');
-            if (statusEl) {
-              const statusText = statusEl.textContent || '';
-              if (statusText !== map[val]) {
-                (card as HTMLElement).style.display = 'none';
-              }
-            }
+    // Wire action buttons
+    grid.querySelectorAll('[data-action="start"]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const missionId = (btn as HTMLElement).getAttribute('data-mission-id');
+        if (!missionId) return;
+
+        // Toggle status: pending → in_progress → completed
+        const card = (btn as HTMLElement).closest('.dashboard-card');
+        const statusEl = card?.querySelector(':scope > div:last-child > span:first-child');
+        const currentStatus = statusEl?.textContent || '';
+
+        let newStatus: string;
+        if (currentStatus === 'En attente') newStatus = 'in_progress';
+        else if (currentStatus === 'En cours') newStatus = 'completed';
+        else return;
+
+        try {
+          const res = await fetch(`/api/expert/missions/${missionId}/status`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: newStatus }),
           });
-        }
+          if (res.ok) {
+            loadExpertMissions(); // Reload
+          }
+        } catch {}
       });
-    }
+    });
+
   } catch (err) {
     console.warn('[Expert] Failed to load missions:', err);
+  }
+
+  // Setup filter (one-time)
+  const filter = document.getElementById('expertMissionFilter');
+  if (filter && !filter.getAttribute('data-filter-wired')) {
+    filter.setAttribute('data-filter-wired', 'true');
+    filter.addEventListener('change', () => {
+      const val = (filter as HTMLSelectElement).value;
+      const cards = grid.querySelectorAll('[data-mission-id]');
+      cards.forEach(card => {
+        const cardEl = (card as HTMLElement).closest('.dashboard-card') as HTMLElement | null;
+        if (!cardEl) return;
+        if (val === 'all') {
+          cardEl.style.display = '';
+        } else {
+          const statusMap: Record<string, string> = { pending: 'En attente', in_progress: 'En cours', completed: 'Terminée' };
+          const label = statusMap[val] || '';
+          const statusEl = cardEl.querySelector(':scope > div:last-child > span:first-child');
+          cardEl.style.display = statusEl?.textContent === label ? '' : 'none';
+        }
+      });
+    });
   }
 }
 

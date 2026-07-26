@@ -18,6 +18,7 @@ import { setResultsPanelContainer, renderResults, renderLoadingState } from '../
 import { runAssessment } from '../../api/risks.js';
 import { mergeAssessment, mergedToHousePartData, scoreToColor, scoreToRiskLabel, SAMPLE_STEP7_DATA, DEFAULT_USER_DATA, parseUnifiedInput, type MergedAssessment, type UserDataInput, type Step7Input, type UnifiedAssessmentInput } from '../../merged-assessment.js';
 import { setupExpertForm, setupUwControls, computeActuarialRisk } from './risk-expert-form.js';
+import { showWarning, showInfo, showSuccess } from '../../utils/notifications.js';
 
 /* ═══════════════════════════════════════════════════════════════
    State
@@ -1411,7 +1412,7 @@ function setupEvaluate(): void {
     genBtn.addEventListener('click', () => {
       const perils = Array.from(selectedPerils);
       if (perils.length === 0) {
-        alert('Veuillez sélectionner au moins un péril à atténuer.');
+        showWarning('Veuillez sélectionner au moins un péril à atténuer.');
         return;
       }
       generateAvenant();
@@ -1421,7 +1422,7 @@ function setupEvaluate(): void {
   const printBtn = document.getElementById('riskPrintAvenant');
   if (printBtn) {
     printBtn.addEventListener('click', () => {
-      alert('Aperçu de l\'avenant — module PDF à implémenter.');
+      showInfo('Aperçu de l\'avenant — module PDF à implémenter.');
     });
   }
 }
@@ -1680,7 +1681,7 @@ function generateAvenant(): void {
         confirmEl.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px!important;">description</span> Générer l\'avenant';
       }, 3000);
     }
-    alert('Avenant émis avec succès ! Les nouvelles conditions ont été appliquées au contrat.');
+    showSuccess('Avenant émis avec succès ! Les nouvelles conditions ont été appliquées au contrat.');
   });
 }
 

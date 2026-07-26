@@ -2,6 +2,7 @@
  * Admin view module — lightweight lifecycle for admin overview stats.
  */
 import { fetchDashboardStats, fetchClientsFromApi } from '../../api/data-service.js';
+import { showInfo } from '../../utils/notifications.js';
 
 let overviewInitialized = false;
 let usersInitialized = false;
@@ -19,58 +20,98 @@ export function destroyAdminOverview(): void {
 }
 
 async function loadAdminOverview(): Promise<void> {
+  const setText = (id: string, val: string) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val;
+  };
+
   try {
-    const stats = await fetchDashboardStats().catch(() => null);
-    const clients = await fetchClientsFromApi().catch(() => []);
+    // Fetch real admin stats from backend
+    const [statsRes, clientsRes, missionsRes] = await Promise.all([
+      fetch('/api/admin/stats').then(r => r.ok ? r.json() : null),
+      fetchClientsFromApi().catch(() => []),
+      fetch('/api/expert/missions').then(r => r.ok ? r.json() : []).catch(() => []),
+    ]);
+
+    const stats = statsRes || await fetchDashboardStats().catch(() => null);
+    const missions = missionsRes as any[] || [];
+    const clients = clientsRes;
 
     if (stats) {
-      const setText = (id: string, val: string) => {
-        const el = document.getElementById(id);
-        if (el) el.textContent = val;
-      };
-
       // Platform stats
-      const totalUsers = stats.totalClients + 4; // approximate
+      const totalUsers = statsRes?.total_users || stats?.totalClients + 4 || 0;
+      const totalProps = statsRes?.total_properties || stats?.totalProperties || 0;
+      const totalAssess = statsRes?.total_assessments || stats?.totalAssessments || 0;
+
       setText('adminStatOverviewUsers', String(totalUsers));
-      setText('adminStatOverviewProps', String(stats.totalProperties));
-      setText('adminStatOverviewAssess', String(stats.totalAssessments));
+      setText('adminStatOverviewProps', String(totalProps));
+      setText('adminStatOverviewAssess', String(totalAssess));
 
       // Banner info
       setText('adminBannerInfo', 'Supervision des utilisateurs, biens et evaluations');
-      setText('adminBannerScore', String(stats.avgScore || '—'));
-      setText('adminBannerTrend', stats.totalAssessments > 5 ? 'En croissance' : 'Operationnel');
+      setText('adminBannerScore', String(statsRes?.assessments_this_month || stats?.totalAssessments || '—'));
+      setText('adminBannerTrend', totalAssess > 5 ? 'En croissance' : 'Operationnel');
 
       // Footer
       setText('adminFooterUsers', totalUsers + ' utilisateurs');
-      setText('adminFooterActive', stats.activeClients + ' actifs');
+      setText('adminFooterActive', (statsRes?.total_assureurs || stats?.activeClients || 0) + ' actifs');
 
-      // Role distribution — estimate from different user types
-      const assureurs = Math.round(clients.length * 0.3) || 1;
-      const assures = clients.length;
-      const experts = Math.round(clients.length * 0.15) || 0;
-      const admins = 1;
+      // Role distribution from real API data
+      const assureurs = statsRes?.total_assureurs || Math.round(clients.length * 0.3) || 1;
+      const assures = statsRes?.total_assures || clients.length;
+      const experts = missions.length > 0 ? new Set(missions.map((m: any) => m.assignedTo)).size : Math.round(clients.length * 0.15) || 0;
+      const admins = statsRes?.total_users ? statsRes.total_users - assureurs - assures - experts + 1 : 1;
 
       setText('adminStatRoleAssureurs', String(Math.max(assureurs, 1)));
-      setText('adminStatRoleAssures', String(assures));
+      setText('adminStatRoleAssures', String(Math.max(assures, 0)));
       setText('adminStatRoleExperts', String(Math.max(experts, 0)));
-      setText('adminStatRoleAdmins', String(admins));
+      setText('adminStatRoleAdmins', String(Math.max(admins, 1)));
+
+      // Assessment status summary (from real API if available)
+      const assStatuses: Record<string, number> = { pending: 0, in_progress: 0, completed: 0 };
+      for (const m of missions) {
+        if (assStatuses[m.status] !== undefined) assStatuses[m.status]++;
+      }
     }
 
-    // Populate activity timeline (latest 3 clients)
+    // Populate activity timeline
     const timeline = document.getElementById('adminActivityTimeline');
-    if (timeline && clients.length > 0) {
-      const recent = clients.slice(0, 3);
-      timeline.innerHTML = recent.map((c: any, i: number) => {
-        const icon = i === 0 ? 'person_add' : i === 1 ? 'home' : 'assessment';
-        const color = i === 0 ? '#6366f1' : i === 1 ? '#10b981' : '#f59e0b';
-        const action = i === 0 ? 'Nouveau client ajoute' : i === 1 ? 'Bien enregistre' : 'Profil mis a jour';
-        const time = i === 0 ? 'Il y a 2h' : i === 1 ? 'Il y a 5h' : 'Il y a 1j';
-        return `<div class="activity-item" style="padding:8px 0;border-bottom:1px solid var(--border-color);font-size:13px;color:var(--text-secondary);display:flex;align-items:center;gap:8px;">
-          <span class="material-symbols-outlined" style="font-size:16px;color:${color};">${icon}</span>
-          <span>${action} : <strong>${c.firstName || ''} ${c.lastName || ''}</strong></span>
-          <span style="margin-left:auto;font-size:11px;color:var(--text-muted);">${time}</span>
-        </div>`;
-      }).join('');
+    if (timeline) {
+      let items: Array<{ icon: string; color: string; text: string; time: string }> = [];
+
+      // Recent missions/assignments
+      const recentMissions = (missions as any[]).slice(0, 3);
+      for (const m of recentMissions) {
+        items.push({
+          icon: 'assignment',
+          color: '#6366f1',
+          text: `Mission assignée : <strong>${escapeHtml(m.clientName || 'Client')}</strong>`,
+          time: new Date(m.createdAt).toLocaleDateString('fr-FR'),
+        });
+      }
+
+      // Recent clients
+      const recentClients = clients.slice(0, Math.max(0, 3 - items.length));
+      for (const c of recentClients) {
+        items.push({
+          icon: 'person_add',
+          color: '#10b981',
+          text: `Client ajouté : <strong>${escapeHtml(c.firstName || '')} ${escapeHtml(c.lastName || '')}</strong>`,
+          time: 'Récemment',
+        });
+      }
+
+      if (items.length === 0) {
+        timeline.innerHTML = '<p style="font-size:12px;color:var(--text-muted);padding:8px;">Aucune activite recente</p>';
+      } else {
+        timeline.innerHTML = items.map(item => `
+          <div class="activity-item" style="padding:8px 0;border-bottom:1px solid var(--border-color);font-size:13px;color:var(--text-secondary);display:flex;align-items:center;gap:8px;">
+            <span class="material-symbols-outlined" style="font-size:16px;color:${item.color};">${item.icon}</span>
+            <span>${item.text}</span>
+            <span style="margin-left:auto;font-size:11px;color:var(--text-muted);">${item.time}</span>
+          </div>
+        `).join('');
+      }
     }
   } catch (err) {
     console.warn('[Admin] Failed to load overview:', err);
@@ -234,7 +275,7 @@ async function loadAdminExperts(): Promise<void> {
     if (inviteBtn && !inviteBtn.getAttribute('data-invite-wired')) {
       inviteBtn.setAttribute('data-invite-wired', 'true');
       inviteBtn.addEventListener('click', () => {
-        alert('Invitation d\'expert — module à implémenter.');
+        showInfo('Invitation d\'expert — module à implémenter.');
       });
     }
   } catch (err) {
