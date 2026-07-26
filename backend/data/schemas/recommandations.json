@@ -1,0 +1,152 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Rapport de Vulnérabilité — Sortie Agents (MVP)",
+  "description": "Format de sortie final attendu par le client. Produit par le pipeline : Agent Collecteur → Agent Analyste → Agent Simulation → Agent Recommandation.",
+  "version": "1.0",
+  "type": "object",
+  "required": ["score_global", "zones", "projection_2050"],
+  "properties": {
+    "score_global": {
+      "type": "integer",
+      "description": "Score de risque global (0-100) — 0 = aucun risque, 100 = critique",
+      "minimum": 0,
+      "maximum": 100,
+      "example": 62
+    },
+    "scores_par_alea": {
+      "type": "object",
+      "description": "Détail des scores par aléa (sortie Agent Analyste Risque)",
+      "properties": {
+        "inondation": { "type": "integer", "minimum": 0, "maximum": 100, "example": 52 },
+        "rga": { "type": "integer", "minimum": 0, "maximum": 100, "example": 78 },
+        "canicule": { "type": "integer", "minimum": 0, "maximum": 100, "example": 15 },
+        "tempete": { "type": "integer", "minimum": 0, "maximum": 100, "example": 38 }
+      },
+      "required": ["inondation", "rga", "canicule", "tempete"]
+    },
+    "zones": {
+      "type": "object",
+      "description": "Analyse de vulnérabilité par zone du bâtiment",
+      "required": ["fondations", "murs_nord", "toiture", "sous_sol"],
+      "properties": {
+        "fondations": { "$ref": "#/definitions/zone_analysis" },
+        "murs_nord": { "$ref": "#/definitions/zone_analysis" },
+        "toiture": { "$ref": "#/definitions/zone_analysis" },
+        "sous_sol": { "$ref": "#/definitions/zone_analysis" }
+      }
+    },
+    "projection_2050": {
+      "type": "object",
+      "description": "Projection du risque à horizon 2050",
+      "required": ["score_global", "zones"],
+      "properties": {
+        "score_global": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "example": 81
+        },
+        "zones": {
+          "type": "object",
+          "properties": {
+            "fondations": { "$ref": "#/definitions/zone_projection" },
+            "murs_nord": { "$ref": "#/definitions/zone_projection" },
+            "toiture": { "$ref": "#/definitions/zone_projection" },
+            "sous_sol": { "$ref": "#/definitions/zone_projection" }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "zone_analysis": {
+      "type": "object",
+      "required": ["risque", "niveau", "alea_principal", "justification", "recommandations", "test_vulnerabilite"],
+      "properties": {
+        "risque": {
+          "type": "integer",
+          "description": "Score de risque de la zone (0-100)",
+          "minimum": 0,
+          "maximum": 100,
+          "example": 78
+        },
+        "niveau": {
+          "type": "string",
+          "description": "Niveau de risque interprété",
+          "enum": ["faible", "moyen", "eleve", "critique"],
+          "example": "eleve"
+        },
+        "alea_principal": {
+          "type": "string",
+          "description": "Aléa principal affectant la zone",
+          "example": "RGA"
+        },
+        "justification": {
+          "type": "string",
+          "description": "Justification narrative du score",
+          "example": "Exposition faible au RGA mais fondations < 50cm non confirmé. Remontée de nappe présente. Risque de fissuration en cas de sécheresse prolongée."
+        },
+        "recommandations": {
+          "type": "array",
+          "description": "Travaux recommandés pour la zone (sortie Agent Recommandation)",
+          "items": {
+            "type": "object",
+            "required": ["travaux", "cout_estime", "gain_resilience"],
+            "properties": {
+              "travaux": {
+                "type": "string",
+                "description": "Description des travaux recommandés",
+                "example": "Reprise des fondations par micro-pieux + drainage périphérique"
+              },
+              "cout_estime": {
+                "type": "string",
+                "description": "Fourchette de coût estimé",
+                "example": "8000-15000€"
+              },
+              "gain_resilience": {
+                "type": "integer",
+                "description": "Gain de résilience estimé en % (0-100)",
+                "minimum": 0,
+                "maximum": 100,
+                "example": 25
+              }
+            }
+          }
+        },
+        "test_vulnerabilite": {
+          "type": "object",
+          "description": "Résultat du test de vulnérabilité spécifique à la zone",
+          "required": ["verdict", "explication"],
+          "properties": {
+            "verdict": {
+              "type": "string",
+              "description": "Verdict du test",
+              "example": "Vulnérabilité modérée — des travaux de mitigation sont recommandés dans les 24 mois"
+            },
+            "explication": {
+              "type": "string",
+              "description": "Explication détaillée du verdict",
+              "example": "Les fondations sont situées en zone d'exposition faible au RGA, mais la présence de remontée de nappe et des fissures légères augmentent la vulnérabilité. Un drainage périphérique et une étude géotechnique sont conseillés."
+            }
+          }
+        }
+      }
+    },
+    "zone_projection": {
+      "type": "object",
+      "description": "Projection 2050 simplifiée pour une zone",
+      "properties": {
+        "risque_projete": {
+          "type": "integer",
+          "description": "Score projeté en 2050",
+          "example": 88
+        },
+        "evolution": {
+          "type": "string",
+          "description": "Évolution par rapport à l'actuel",
+          "example": "+10 points (aggravation liée au changement climatique)"
+        }
+      }
+    }
+  }
+}

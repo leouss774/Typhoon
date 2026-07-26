@@ -1,15 +1,19 @@
 {
   "name": "previa",
+  "version": "0.2.0",
+  "description": "Previa — Risk Assessment Platform (Typhoon Architecture)",
   "private": true,
-  "version": "0.1.0",
-  "workspaces": [
-    "packages/*"
-  ],
   "scripts": {
-    "dev:api": "npm run dev:ts --workspace=packages/api",
-    "dev:front": "npm run dev --workspace=packages/front",
-    "build": "npm run build --workspace=packages/front",
-    "db:push": "npm run db:push --workspace=packages/api",
-    "db:seed": "npm run db:seed --workspace=packages/api"
+    "dev:front": "cd frontend && npm run dev",
+    "dev:back": "cd backend && npm run dev",
+    "build:front": "cd frontend && npm run build",
+    "build:back": "cd backend && npm run build",
+    "db:push": "cd backend && npm run db:push",
+    "db:seed": "cd backend && npm run db:seed",
+    "agents:recommandations": "node backend/agents/recommandation/md-to-recommandations.js backend/data/raw/Rapport_Recommandations_8_Port_Maillard.md backend/data/raw/step7_demo_output.json",
+    "agents:merge": "node backend/agents/merge_final.js backend/data/raw/merged_input.json backend/data/processed/step7_avec_recos.json backend/data/processed/assessment_complet.json"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0"
   }
 }

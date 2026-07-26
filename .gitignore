@@ -31,5 +31,7 @@ Thumbs.db
 
 # Local agents / temporary specs
 .agents/
+.claude/
+.freebuff/
 .specify/
 skills-lock.json

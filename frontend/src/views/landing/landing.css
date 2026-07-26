@@ -1,0 +1,23 @@
+.landing-view {
+  display: none;
+  width: 100vw;
+  min-height: 100vh;
+  position: relative;
+  z-index: 100;
+}
+
+.landing-view.active {
+  display: block;
+}
+
+.landing-view.active ~ .dashboard-container {
+  display: none !important;
+}
+
+.landing-view.active ~ .auth-view {
+  display: none !important;
+}
+
+.w-webflow-badge {
+  display: none !important;
+}

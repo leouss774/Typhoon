@@ -1,0 +1,17 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": ".",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext"
+  },
+  "include": [
+    "./api/**/*.ts",
+    "./config/**/*.ts",
+    "./database/**/*.ts",
+    "./models/**/*.ts",
+    "./services/**/*.ts"
+  ],
+  "exclude": ["node_modules", "dist", "drizzle.config.ts"]
+}

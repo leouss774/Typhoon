@@ -1,0 +1,208 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Formulaire d'Évaluation des Risques — Entrée Utilisateur",
+  "description": "Schéma des champs déclaratifs renseignés par l'assuré ou l'assureur. Alimente le pipeline Collecteur → Analyste → Agent Simulation → Agent Recommandation.",
+  "version": "1.0",
+  "type": "object",
+  "required": ["adresse", "type_bien", "annee_construction"],
+  "properties": {
+    "adresse": {
+      "type": "string",
+      "description": "Adresse postale complète du bien assuré",
+      "example": "8 Allée du Port Maillard 44000 Nantes"
+    },
+    "type_bien": {
+      "type": "string",
+      "description": "Nature du bien",
+      "enum": ["maison", "appartement", "immeuble", "local_commercial", "autre"]
+    },
+    "surface": {
+      "type": "number",
+      "description": "Surface habitable en m²",
+      "minimum": 1,
+      "maximum": 10000,
+      "example": 100
+    },
+    "nb_pieces": {
+      "type": "integer",
+      "description": "Nombre de pièces principales",
+      "minimum": 1,
+      "maximum": 50
+    },
+    "nb_etages": {
+      "type": "integer",
+      "description": "Nombre d'étages (hors sous-sol)",
+      "minimum": 0,
+      "maximum": 50,
+      "example": 2
+    },
+    "annee_construction": {
+      "type": "integer",
+      "description": "Année de construction du bâtiment",
+      "minimum": 1700,
+      "maximum": 2026,
+      "example": 1965
+    },
+    "annee_renovation": {
+      "type": "integer",
+      "description": "Année de la dernière rénovation majeure (optionnel)",
+      "minimum": 1700,
+      "maximum": 2026,
+      "example": 2020
+    },
+    "type_structure": {
+      "type": "string",
+      "description": "Matériau principal de la structure porteuse",
+      "enum": ["Béton armé", "Pierre", "Brique", "Bois", "Métal", "Mixte", "Autre"],
+      "example": "Béton armé"
+    },
+    "etat_structure": {
+      "type": "string",
+      "description": "État général perçu de la structure",
+      "enum": ["Neuf", "Bon", "Moyen", "Médiocre", "Vétuste"],
+      "example": "Bon"
+    },
+    "fissures": {
+      "type": "string",
+      "description": "Présence et gravité des fissures visibles",
+      "enum": ["Aucune", "Légères", "Moyennes", "Importantes", "Structurelles"]
+    },
+    "affaissement": {
+      "type": "string",
+      "description": "Signes d'affaissement ou tassement différentiel",
+      "enum": ["non", "leger", "visible", "important"]
+    },
+    "isolation_toiture": {
+      "type": "string",
+      "description": "Niveau d'isolation de la toiture",
+      "enum": ["neuve", "bonne", "moyenne", "faible", "absente"]
+    },
+    "isolation_murs": {
+      "type": "string",
+      "description": "Niveau d'isolation des murs extérieurs",
+      "enum": ["neuve", "bonne", "moyenne", "faible", "absente"]
+    },
+    "isolation_sol": {
+      "type": "string",
+      "description": "Niveau d'isolation du sol/plancher bas",
+      "enum": ["neuve", "bonne", "moyenne", "faible", "absente"]
+    },
+    "type_toiture": {
+      "type": "string",
+      "description": "Matériau principal de la couverture",
+      "enum": ["Tuiles", "Ardoises", "Zinc", "Bac acier", "Béton", "Végétalisée", "Autre"]
+    },
+    "age_toiture": {
+      "type": "integer",
+      "description": "Âge de la toiture en années",
+      "minimum": 0,
+      "maximum": 200
+    },
+    "annee_toiture": {
+      "type": "integer",
+      "description": "Année de la dernière rénovation/installation de la toiture",
+      "minimum": 1900,
+      "maximum": 2026
+    },
+    "etat_toiture": {
+      "type": "string",
+      "description": "État perçu de la toiture",
+      "enum": ["Neuf", "Bon", "Moyen", "Médiocre", "Vétuste"]
+    },
+    "infiltrations": {
+      "type": "string",
+      "description": "Présence d'infiltrations d'eau constatées",
+      "enum": ["Non", "Occasionnelles", "Récurrentes", "Permanentes"]
+    },
+    "presence_sous_sol": {
+      "type": "boolean",
+      "description": "Le bien possède-t-il un sous-sol ?"
+    },
+    "presence_cave": {
+      "type": "boolean",
+      "description": "Le bien possède-t-il une cave ?"
+    },
+    "presence_garage": {
+      "type": "boolean",
+      "description": "Le bien possède-t-il un garage ?"
+    },
+    "occupation": {
+      "type": "string",
+      "description": "Statut d'occupation du bien",
+      "enum": ["Occupé", "Vacant", "Loué", "Secondaire"]
+    },
+    "climatisation": {
+      "type": "boolean",
+      "description": "Le bien dispose-t-il d'un système de climatisation ?"
+    },
+    "chauffage_principal": {
+      "type": "string",
+      "description": "Type de chauffage principal",
+      "enum": ["Électrique", "Gaz", "Fioul", "Bois", "Pompe à chaleur", "Réseau de chaleur", "Solaire", "Autre"]
+    },
+    "installation_electrique_annee": {
+      "type": "integer",
+      "description": "Année de l'installation électrique (pour évaluer le risque incendie)",
+      "minimum": 1900,
+      "maximum": 2026,
+      "example": 1988
+    },
+    "presence_detecteurs_fumee": {
+      "type": "boolean",
+      "description": "Le bien est-il équipé de détecteurs de fumée conformes ?"
+    },
+    "exposition_solaire": {
+      "type": "string",
+      "description": "Exposition solaire principale du bien",
+      "enum": ["Faible", "Moyenne", "Forte", "Très forte"]
+    },
+    "zone_mitoyennete": {
+      "type": "string",
+      "description": "Configuration par rapport aux bâtiments voisins",
+      "enum": ["Isolé", "Mitoyen d'un côté", "Mitoyen des deux côtés", "En bande"]
+    },
+    "capital_assure": {
+      "type": "number",
+      "description": "Capital assuré / valeur du bâtiment en €",
+      "minimum": 0,
+      "example": 250000
+    },
+    "hauteur_plancher": {
+      "type": "number",
+      "description": "Hauteur du plancher habitable au-dessus du sol en cm (critique inondation)",
+      "minimum": 0,
+      "maximum": 500,
+      "example": 30
+    },
+    "clapet_anti_retour": {
+      "type": "boolean",
+      "description": "Présence d'un clapet anti-retour sur les réseaux d'eaux usées"
+    },
+    "equipements_elec_sous_sol": {
+      "type": "boolean",
+      "description": "Équipements électriques situés en sous-sol ou niveau bas"
+    },
+    "profondeur_fondations": {
+      "type": "string",
+      "description": "Profondeur estimée des fondations",
+      "enum": ["Moins de 50 cm", "50 à 80 cm", "Plus de 80 cm", "Non connu"]
+    },
+    "arbres_proches": {
+      "type": "boolean",
+      "description": "Arbres de grande hauteur à moins de 5 m du bâtiment"
+    },
+    "materiau_toit": {
+      "type": "string",
+      "description": "Matériau spécifique de la couverture (complément à type_toiture)",
+      "enum": ["Tuiles canal", "Tuiles mécaniques", "Ardoises naturelles", "Ardoises synthétiques", "Zinc", "Bac acier", "Shingle", "Béton", "Autre"]
+    },
+    "panneaux_solaires": {
+      "type": "boolean",
+      "description": "Présence de panneaux solaires/ photovoltaïques en toiture"
+    },
+    "observations": {
+      "type": "string",
+      "description": "Remarques libres sur l'état du bien (optionnel)"
+    }
+  }
+}
